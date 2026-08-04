@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Sudoku",
+    "slug": "sudoku",
+    "scheme": "sudoku",
+    "version": "0.1.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.siqbal.sudoku",
+      "requireFullScreen": false
+    },
+    "android": {
+      "package": "com.siqbal.sudoku",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": ["expo-sqlite"]
+  }
+}

@@ -209,6 +209,18 @@ undo, and hints that reveal the *next logically justified step* using the same
 technique ladder as scoring — a hint explains the technique by name, so the app
 teaches rather than just filling a cell.
 
+**The keypad is not a permanent fixture.** In cell-first input it appears when
+a square is selected and is replaced by a prompt when none is — the digits are
+the second half of a gesture, and showing them with nothing to apply them to is
+clutter. Digit-first is the other way round, so there the keypad is always
+present. The keys carry no remaining-count badges; a digit simply dims once all
+nine are placed.
+
+**There is no erase button.** Tapping the digit already in a cell takes it back
+out. That is the only way to empty a cell, so it must keep working — and it
+must not touch the mistake counters, or clearing a cell becomes a free way to
+wipe penalties.
+
 # Scoring
 
 All tunable numbers live as exported `SCREAMING_SNAKE` constants in
