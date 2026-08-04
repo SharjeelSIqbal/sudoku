@@ -25,6 +25,28 @@ interface NumberPadProps {
   canUndo: boolean;
 }
 
+/**
+ * Tells the player what the pad is waiting for.
+ *
+ * Without this the pad just sits there and a tap on a square appears to do
+ * nothing, because the digit is the second half of the gesture. Saying so is
+ * cheaper than expecting anyone to infer it.
+ */
+function promptForInputState(
+  inputMode: InputMode,
+  hasSelectedCell: boolean,
+  hasSelectedDigit: boolean,
+): string {
+  if (inputMode === 'digit-first') {
+    return hasSelectedDigit
+      ? 'Now tap the squares that digit goes in.'
+      : 'Tap a number, then the squares it goes in.';
+  }
+  return hasSelectedCell
+    ? 'Now tap a number.'
+    : 'Tap a square, then tap a number.';
+}
+
 /** How many of each digit are still missing from the grid. */
 function remainingCountsByDigit(game: ActiveGame): Record<number, number> {
   const placedCounts: Record<number, number> = {};
@@ -63,8 +85,19 @@ export function NumberPad({
   const styles = createStyles();
   const remaining = remainingCountsByDigit(game);
 
+  const hasSelectedCell =
+    game.selectedCellIndex !== null && game.givens[game.selectedCellIndex] === EMPTY_CELL;
+  const hasSelectedDigit = game.selectedDigit !== null;
+  // In cell-first the digits do nothing until a square is chosen, so they are
+  // dimmed rather than silently inert.
+  const isAwaitingCell = inputMode === 'cell-first' && !hasSelectedCell;
+
   return (
     <View style={styles.container}>
+      <Text style={[styles.prompt, { color: colors.foregroundMuted }]}>
+        {promptForInputState(inputMode, hasSelectedCell, hasSelectedDigit)}
+      </Text>
+
       <View style={styles.actionRow}>
         <ActionButton label="Undo" onPress={onUndo} disabled={!canUndo} />
         <ActionButton label="Erase" onPress={onErase} />
@@ -94,7 +127,7 @@ export function NumberPad({
                 {
                   backgroundColor: isSelected ? colors.accent : colors.surface,
                   borderColor: isSelected ? colors.accent : colors.rule,
-                  opacity: isExhausted ? 0.35 : pressed ? 0.7 : 1,
+                  opacity: isExhausted || isAwaitingCell ? 0.35 : pressed ? 0.7 : 1,
                 },
               ]}
             >
@@ -161,7 +194,8 @@ function ActionButton({
 
 function createStyles() {
   return StyleSheet.create({
-    container: { gap: 12 },
+    container: { gap: 10 },
+    prompt: { fontSize: 13, textAlign: 'center' },
     actionRow: { flexDirection: 'row', gap: 8 },
     actionButton: {
       flex: 1,

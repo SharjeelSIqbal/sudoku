@@ -29,6 +29,58 @@ import {
 import { type ActiveGame } from '../../../../state/GameContext';
 import { useC, type BoardColors } from '../../../../theme/colors';
 
+/**
+ * The outer rule around the grid.
+ *
+ * This number has to be added back into the container's width and height.
+ * React Native sizes borders inside the box, so a container of exactly
+ * `cellSize * 9` leaves only `cellSize * 9 - BOARD_BORDER_WIDTH * 2` of usable
+ * room — four points short of nine cells. The ninth cell of every row then
+ * wraps onto the next line, and the grid silently shifts by one more cell per
+ * row. It still looks like a 9x9 board at a glance, which is what makes it
+ * nasty: the giveaway is a blank gutter down the right-hand side.
+ */
+export const BOARD_BORDER_WIDTH = 2;
+
+export interface BoardLayout {
+  cellSize: number;
+  /** Outer width and height of the grid container, border included. */
+  containerSize: number;
+}
+
+/**
+ * Sizes the grid for the space available.
+ *
+ * The container has to be nine cells *plus its own border on each side*.
+ * React Native lays borders out inside the box, so a container of exactly
+ * `cellSize * 9` leaves four points too little room, the ninth cell of each
+ * row wraps onto the next line, and the whole grid shears by one more cell per
+ * row. It still reads as a 9x9 board at a glance — the giveaways are a blank
+ * gutter down the right-hand side and a peer highlight that comes out
+ * diagonal. Kept as a pure function so that arithmetic is under test.
+ */
+export function boardLayoutFor(availableSize: number): BoardLayout {
+  const cellSize = Math.floor(availableSize / BOARD_SIZE);
+  return {
+    cellSize,
+    containerSize: cellSize * BOARD_SIZE + BOARD_BORDER_WIDTH * 2,
+  };
+}
+
+/**
+ * Every cell gets the same outline on all four sides.
+ *
+ * The earlier version drew only a top and left border per cell and varied the
+ * weight to mark box boundaries. That leaves the last row and column with no
+ * outline at all, and the varying weights read as randomly heavy lines rather
+ * than as structure. The 3x3 separators are drawn as their own overlay lines
+ * instead, which keeps the cell grid perfectly uniform.
+ */
+const CELL_BORDER_WIDTH = StyleSheet.hairlineWidth;
+
+/** The heavier rule between boxes, drawn over the uniform cell grid. */
+const BOX_RULE_WIDTH = 2;
+
 interface SudokuBoardProps {
   game: ActiveGame;
   /** Board width in points; cells divide it evenly. */
@@ -38,7 +90,10 @@ interface SudokuBoardProps {
   onSelectCell: (cellIndex: number) => void;
 }
 
-interface CellVisualState {
+/** The parts of a game the cell description actually reads. */
+export type CellContents = Pick<ActiveGame, 'givens' | 'entries' | 'pencilMarks'>;
+
+export interface CellVisualState {
   isGiven: boolean;
   isSelected: boolean;
   isPeer: boolean;
@@ -69,8 +124,8 @@ function backgroundForCell(
   return boardColors.surface;
 }
 
-function describeCellForScreenReader(
-  game: ActiveGame,
+export function describeCellForScreenReader(
+  game: CellContents,
   cellIndex: number,
   state: CellVisualState,
 ): string {
@@ -109,7 +164,7 @@ export const SudokuBoard = memo(function SudokuBoard({
 }: SudokuBoardProps) {
   const colors = useC();
   const boardColors = colors.board;
-  const cellSize = Math.floor(boardSize / BOARD_SIZE);
+  const { cellSize, containerSize } = boardLayoutFor(boardSize);
   const styles = createStyles();
 
   const selectedCellIndex = game.selectedCellIndex;
@@ -127,8 +182,9 @@ export const SudokuBoard = memo(function SudokuBoard({
       style={[
         styles.board,
         {
-          width: cellSize * BOARD_SIZE,
-          height: cellSize * BOARD_SIZE,
+          width: containerSize,
+          height: containerSize,
+          borderWidth: BOARD_BORDER_WIDTH,
           borderColor: boardColors.boxRule,
           backgroundColor: boardColors.surface,
         },
@@ -157,9 +213,6 @@ export const SudokuBoard = memo(function SudokuBoard({
           isHinted: hintedCells.has(cellIndex),
         };
 
-        const rowIndex = ROW_OF_CELL[cellIndex];
-        const columnIndex = COLUMN_OF_CELL[cellIndex];
-
         return (
           <Pressable
             key={cellIndex}
@@ -174,13 +227,7 @@ export const SudokuBoard = memo(function SudokuBoard({
                 height: cellSize,
                 backgroundColor: backgroundForCell(state, boardColors),
                 borderColor: boardColors.rule,
-                // Box boundaries get a heavier rule so the 3x3 structure reads
-                // without relying on colour at all.
-                borderTopWidth: rowIndex % 3 === 0 ? 1.5 : StyleSheet.hairlineWidth,
-                borderLeftWidth: columnIndex % 3 === 0 ? 1.5 : StyleSheet.hairlineWidth,
-                borderTopColor: rowIndex % 3 === 0 ? boardColors.boxRule : boardColors.rule,
-                borderLeftColor:
-                  columnIndex % 3 === 0 ? boardColors.boxRule : boardColors.rule,
+                borderWidth: CELL_BORDER_WIDTH,
               },
             ]}
           >
@@ -213,9 +260,51 @@ export const SudokuBoard = memo(function SudokuBoard({
           </Pressable>
         );
       })}
+
+      <BoxSeparators cellSize={cellSize} color={boardColors.boxRule} />
     </View>
   );
 });
+
+/**
+ * The two vertical and two horizontal rules that mark the 3x3 boxes, drawn
+ * over the cell grid. `pointerEvents="none"` matters — without it these lines
+ * would swallow taps on the cells underneath them.
+ */
+function BoxSeparators({ cellSize, color }: { cellSize: number; color: string }) {
+  const boxOffsets = [1, 2];
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {boxOffsets.map((boxOffset) => (
+        <View
+          key={`vertical-${boxOffset}`}
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: cellSize * 3 * boxOffset - BOX_RULE_WIDTH / 2,
+            width: BOX_RULE_WIDTH,
+            backgroundColor: color,
+          }}
+        />
+      ))}
+      {boxOffsets.map((boxOffset) => (
+        <View
+          key={`horizontal-${boxOffset}`}
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: cellSize * 3 * boxOffset - BOX_RULE_WIDTH / 2,
+            height: BOX_RULE_WIDTH,
+            backgroundColor: color,
+          }}
+        />
+      ))}
+    </View>
+  );
+}
 
 function PencilMarks({
   mask,
