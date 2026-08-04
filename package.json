@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "jest",
-    "check": "npm run typecheck && npm run lint && npm run test"
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "fixtures": "tsx scripts/captureFixtures.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

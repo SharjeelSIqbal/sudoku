@@ -26,14 +26,15 @@ import {
   DIFFICULTIES,
   type Board,
   type Difficulty,
+  type Digit,
   type TechniqueId,
 } from '../src/game/types';
 
 interface PositiveFixture {
   technique: TechniqueId;
   boardString: string;
-  placements: { cellIndex: number; digit: number }[];
-  eliminations: { cellIndex: number; digit: number }[];
+  placements: { cellIndex: number; digit: Digit }[];
+  eliminations: { cellIndex: number; digit: Digit }[];
   explanation: string;
 }
 
@@ -138,13 +139,13 @@ const fileContents = `/**
  * makes puzzles unsolvable.
  */
 
-import { type Difficulty, type TechniqueId } from '../../game/types';
+import { type Difficulty, type Digit, type TechniqueId } from '../../game/types';
 
 export interface TechniquePositiveFixture {
   technique: TechniqueId;
   boardString: string;
-  placements: { cellIndex: number; digit: number }[];
-  eliminations: { cellIndex: number; digit: number }[];
+  placements: { cellIndex: number; digit: Digit }[];
+  eliminations: { cellIndex: number; digit: Digit }[];
   explanation: string;
 }
 
