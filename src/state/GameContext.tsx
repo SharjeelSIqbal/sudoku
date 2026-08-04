@@ -22,7 +22,6 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
-import { InteractionManager } from 'react-native';
 
 import {
   boardFromDigits,
@@ -44,6 +43,7 @@ import {
 } from '../game/types';
 import { clearGameSnapshot, saveGameSnapshot, type SavedGameSnapshot } from '../data/savedGame';
 import { dayKeyOf } from '../utils/dates';
+import { runWhenIdle } from '../utils/scheduling';
 
 /** Wrong entries allowed before the run ends, when the strike limit is on. */
 export const MAX_STRIKES = 3;
@@ -543,7 +543,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const judgement = game.pendingJudgements[0];
     judgementInFlight.current = true;
 
-    const task = InteractionManager.runAfterInteractions(() => {
+    const task = runWhenIdle(() => {
       const digitsBefore = new Uint8Array(CELL_COUNT);
       for (let cellIndex = 0; cellIndex < CELL_COUNT; cellIndex += 1) {
         digitsBefore[cellIndex] =

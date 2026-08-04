@@ -8,11 +8,11 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { InteractionManager } from 'react-native';
 
 import { generateDailyPuzzle, generatePuzzle } from '../game/generator';
 import { DIFFICULTIES, type Difficulty } from '../game/types';
 import { takeBankedPuzzle, topUpBank } from '../data/puzzleBank';
+import { runWhenIdle } from '../utils/scheduling';
 
 export interface LoadedPuzzle {
   seed: string;
@@ -32,7 +32,7 @@ export function usePuzzleLoader() {
     }
     topUpScheduled.current = true;
 
-    InteractionManager.runAfterInteractions(() => {
+    runWhenIdle(() => {
       void topUpBank(DIFFICULTIES, `bank-${Date.now()}`)
         .catch((error) => {
           console.warn('Could not top up the puzzle bank', error);
