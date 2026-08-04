@@ -110,7 +110,6 @@ type GameAction =
   | { type: 'setPencilMode'; isPencilMode: boolean }
   | { type: 'enterDigit'; cellIndex: number; digit: Digit }
   | { type: 'togglePencilMark'; cellIndex: number; digit: Digit }
-  | { type: 'eraseCell'; cellIndex: number }
   | { type: 'undo' }
   | { type: 'showHint'; hint: SolveStep | null }
   | { type: 'applyHint' }
@@ -194,6 +193,39 @@ function createGame(input: StartGameInput): ActiveGame {
     undoStack: [],
     pendingJudgements: [],
   };
+}
+
+/**
+ * Empties a cell of its digit and its pencil marks.
+ *
+ * Reached by tapping the digit that is already there. The mistake counters are
+ * deliberately left alone: taking a wrong digit back out does not un-make the
+ * mistake, or clearing a cell would be a free way to wipe penalties.
+ */
+function clearCell(game: ActiveGame, cellIndex: number): ActiveGame {
+  const entries = new Uint8Array(game.entries);
+  const pencilMarks = new Uint16Array(game.pencilMarks);
+
+  if (entries[cellIndex] === EMPTY_CELL && pencilMarks[cellIndex] === 0) {
+    return game;
+  }
+
+  const undoEntry: UndoEntry = {
+    cellIndex,
+    previousDigit: entries[cellIndex],
+    previousMarks: pencilMarks[cellIndex],
+  };
+  entries[cellIndex] = EMPTY_CELL;
+  pencilMarks[cellIndex] = 0;
+
+  return withRefreshedMarks({
+    ...game,
+    entries,
+    pencilMarks,
+    conflictedCells: game.conflictedCells.filter((cell) => cell !== cellIndex),
+    selectedCellIndex: cellIndex,
+    undoStack: [...game.undoStack, undoEntry],
+  });
 }
 
 function applyEntry(game: ActiveGame, cellIndex: number, digit: Digit): ActiveGame {
@@ -288,9 +320,12 @@ function gameReducer(game: ActiveGame | null, action: GameAction): ActiveGame | 
       if (game.status !== 'playing' || isCellGiven(game, action.cellIndex)) {
         return game;
       }
-      // Re-entering the digit already there is a no-op, not a fresh mistake.
+      // Tapping the digit already in the cell takes it back out again. That
+      // is the only way to empty a cell now there is no erase button, and it
+      // must not count as a fresh mistake — the player is undoing, not
+      // guessing again.
       if (game.entries[action.cellIndex] === action.digit) {
-        return game;
+        return clearCell(game, action.cellIndex);
       }
       return applyEntry(game, action.cellIndex, action.digit);
     }
@@ -316,32 +351,6 @@ function gameReducer(game: ActiveGame | null, action: GameAction): ActiveGame | 
         selectedCellIndex: action.cellIndex,
         undoStack: [...game.undoStack, undoEntry],
       };
-    }
-
-    case 'eraseCell': {
-      if (game.status !== 'playing' || isCellGiven(game, action.cellIndex)) {
-        return game;
-      }
-      const entries = new Uint8Array(game.entries);
-      const pencilMarks = new Uint16Array(game.pencilMarks);
-      if (entries[action.cellIndex] === EMPTY_CELL && pencilMarks[action.cellIndex] === 0) {
-        return game;
-      }
-      const undoEntry: UndoEntry = {
-        cellIndex: action.cellIndex,
-        previousDigit: entries[action.cellIndex],
-        previousMarks: pencilMarks[action.cellIndex],
-      };
-      entries[action.cellIndex] = EMPTY_CELL;
-      pencilMarks[action.cellIndex] = 0;
-      return withRefreshedMarks({
-        ...game,
-        entries,
-        pencilMarks,
-        conflictedCells: game.conflictedCells.filter((cell) => cell !== action.cellIndex),
-        selectedCellIndex: action.cellIndex,
-        undoStack: [...game.undoStack, undoEntry],
-      });
     }
 
     case 'undo': {
@@ -489,7 +498,6 @@ interface GameContextValue {
   setPencilMode: (isPencilMode: boolean) => void;
   enterDigit: (cellIndex: number, digit: Digit) => void;
   togglePencilMark: (cellIndex: number, digit: Digit) => void;
-  eraseCell: (cellIndex: number) => void;
   undo: () => void;
   requestHint: () => void;
   applyHint: () => void;
@@ -619,7 +627,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
       enterDigit: (cellIndex, digit) => dispatch({ type: 'enterDigit', cellIndex, digit }),
       togglePencilMark: (cellIndex, digit) =>
         dispatch({ type: 'togglePencilMark', cellIndex, digit }),
-      eraseCell: (cellIndex) => dispatch({ type: 'eraseCell', cellIndex }),
       undo: () => dispatch({ type: 'undo' }),
       requestHint,
       applyHint: () => dispatch({ type: 'applyHint' }),

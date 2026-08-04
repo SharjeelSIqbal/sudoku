@@ -41,7 +41,6 @@ export function GameScreen() {
     setPencilMode,
     enterDigit,
     togglePencilMark,
-    eraseCell,
     undo,
     requestHint,
     applyHint,
@@ -288,9 +287,6 @@ export function GameScreen() {
           game={game}
           inputMode={settings.inputMode}
           onPressDigit={handleDigitPress}
-          onErase={() =>
-            game.selectedCellIndex !== null ? eraseCell(game.selectedCellIndex) : undefined
-          }
           onUndo={undo}
           onTogglePencilMode={() => setPencilMode(!game.isPencilMode)}
           onHint={requestHint}
